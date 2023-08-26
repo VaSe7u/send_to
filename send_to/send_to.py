@@ -1,27 +1,212 @@
-"""send_to
+"""
+This project aids in the creation of scripts that organize files, passed to it
+as arguments. The scripts can be placed inside Window's `shell:sendto`
+directory.
 
-A module that allows to easily create scripts for organizing files to different
-folders. Can be used in combination with Window's shell:sendto.
 
-# How it works?
-The `send_to(cfg)` procedure uses a `Cfg` object to determine the:
- - destination directory
- - operation (move/copy)
- - date format, wheter to prompt the user for a date or use today
- - wheter to ask for description
- - wheter to overwrite the destination files
- - ...
-It then goes through all the files (passed as arguments) and calls the
-functions defined by the user:
- - `subdir(date, desc)`: name of the sub-directory
- - `skip(file_path)`: wheter to skip the passed file
- - `rename(file_path, date, desc)`: new name for the passed file
- - `post_process(file_path)`: do custom post-processing on the passed file
+How it works?
+-------------
 
-# How to use it?
-Create your script file (it's easiest to place it inside the target folder).
-Use the `Cfg` class to set your configuration and attach your callback
-functions (optional). Call the `send_to(cfg)` procedure.
+The function :code:`send_to(cfg)` follows the configuration that is set in the
+passed :code:`Cfg` object. This object holds configuration such as: the
+destination path, wheter the files will be moved or copied, the names of the
+user defined functions, etc.
+
+The user defined functions are used to determine: if the files will be further
+categorized in a subdirectory, wheter a file will be skipped, wheter a file
+will be renamed and a function for doing post-processing on the destination
+files.
+
+
+How to use it?
+--------------
+
+This project is meant to be used as a library module, create the actual Python
+script file and import the function :code:`send_to(cfg)`, the classes
+:code:`Cfg` and :code:`Info` and the enum :code:`Operation` from the
+:code:`send_to` module.
+
+.. code-block:: python
+
+    from send_to import send_to, Cfg, Info, Operation
+
+
+Setting the configuration (:code:`Cfg`)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Instantiate an object from the :code:`Cfg` class and set it data members.
+
+.. code-block:: python
+   :caption: Example:
+
+    cfg = Cfg()
+    cfg.version = 0
+    cfg.dst_path = os.path.dirname(sys.argv[0])  # use script's location
+    cfg.operation = Operation.MOVE
+
+    # user defined functions (explained later)
+    cfg.subdir = subdir
+    cfg.skip = skip
+    cfg.rename = rename
+    cfg.post_process = post_process
+
+
+:code:`Cfg` member variables:
+*****************************
+
+.. autoattribute:: Cfg.version
+.. autoattribute:: Cfg.dst_path
+.. autoattribute:: Cfg.operation
+.. autoattribute:: Cfg.date_fmt
+.. autoattribute:: Cfg.ask_for_date
+.. autoattribute:: Cfg.ask_for_desc
+.. autoattribute:: Cfg.overwrite_file
+.. autoattribute:: Cfg.dry_run
+.. autoattribute:: Cfg.debug
+.. autoattribute:: Cfg.subdir
+.. autoattribute:: Cfg.skip
+.. autoattribute:: Cfg.rename
+.. autoattribute:: Cfg.post_process
+
+
+Creating the callback functions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+There are 4 (optional) user defined functions that'll be called by
+:code:`send_to(cfg)`. They can be created in the script file and their names
+are set in the :code:`Cfg` object. These functions usually take an :code:`Info`
+object as an argument.
+
+
+The :code:`Info` class
+**********************
+Information such as: source file path, destination path, date and description
+is stored in an `Info` object. This object is then passed to some of the user
+defined functions so this information can be used in e.g. naming the
+subdirectory, the file etc.
+
+.. autoattribute:: Info.file_path
+.. autoattribute:: Info.dst_path
+.. autoattribute:: Info.date
+.. autoattribute:: Info.desc
+
+
+Subdirectory function
+*********************
+.. code-block:: python
+
+    def subdir(info: Info) -> str:
+    \"""Use this function to construct a subdirectory name based on the
+    information provided by the passed `Info` object. If no subdirectory is
+    required - return an empty string.
+
+    Args:
+        info (Info)
+
+    Returns:
+        str: subdirectory name or empty string
+    \"""
+
+.. code-block:: python
+    :caption: Example "subdir" function:
+
+    def my_subdir_func(info: Info) -> str:
+        \"""Tell `send_to(cfg)` to create a subdirectory named \"{date}
+        {description}\" e.g. \"2023-08-26 summer\".\"""
+        return (f'{info.date} {info.desc}').strip()
+
+    cfg.subdir = my_sudir_func
+
+
+Skip function
+*************
+.. code-block:: python
+
+    def skip(info: Info) -> bool:
+    \"""Use this function to determine if the currently processed file should
+    be skipped or not.
+
+    Args:
+        info (Info)
+
+    Returns:
+        bool: True to skip the current file, False otherwise
+    \"""
+
+.. code-block:: python
+    :caption: Example "skip" function:
+
+    def skip_jpgs(info: Info) -> str:
+        \"""Tell `send_to(cfg)` to skip JPGs.\"""
+        file = os.path.basename(info.file_path)
+        file_name, file_ext = os.path.splitext(file)
+
+        if file_ext.lower() == '.jpg':
+            return True
+        else:
+            return False
+
+    cfg.skip = skip_jpgs
+
+
+Rename function
+***************
+.. code-block:: python
+
+    def rename(info: Info) -> str:
+    \"""Use this function to determine how the currently processed file should
+    be renamed.
+
+    Args:
+        info (Info)
+
+    Returns:
+        str: new file name or empty string to keep the original name
+    \"""
+
+.. code-block:: python
+    :caption: Example "rename" function:
+
+    def append_desc(info: Info) -> str:
+        \"""Tell `send_to(cfg)` to append description to the destination file
+        name.\"""
+        file = os.path.basename(info.file_path)
+        file_name, file_ext = os.path.splitext(file)
+
+        return (f"{file_name} {info.desc}{file_ext}")
+
+    cfg.rename = append_desc
+
+
+Post-processing function
+************************
+.. code-block:: python
+
+    def post_process(file_path: str) -> None:
+    \"""Use this function to do post-processing on the destination file.
+
+    Args:
+        file_path (str): path of the destination file
+    \"""
+
+.. code-block:: python
+    :caption: Example "post_process" function:
+
+    def resize(file_path: str) -> None:
+        \"""Resize destination files to 1080p.\"""
+        resize_img(file_path, file_path + "_1080p", "1920x1080")
+
+    cfg.post_process = resize
+
+
+Executing :code:`send_to(cfg)`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Call :code:`send_to(cfg)`, passing it the configuration object :code:`Cfg`.
+
+.. code-block:: python
+    :emphasize-lines: 1
+
+    send_to(cfg)
+
 """
 
 __name__ = "send_to"
@@ -77,6 +262,56 @@ def semver_str_to_int(version: str, part: VersionPart) -> int:
         ver = -1
 
     return int(ver)
+
+
+Operation = Enum("Operation", ['MOVE', 'COPY'])
+
+
+class Cfg:
+    """Configuration used be :code:`send_to(cfg)` function."""
+
+    version: int = semver_str_to_int(__version__, VersionPart.MAJOR)
+    """Set it to the major version of the :code:`send_to` module that the
+    script is currently developed for."""
+
+    dst_path: str
+    """Destination path for the processed files."""
+
+    operation: Operation = Operation.MOVE
+    """Operation the will be performed on the files - copy or move."""
+
+    date_fmt: str = "%Y-%m-%d"
+    """String format of the date."""
+
+    ask_for_date: bool = True
+    """Prompt the user to input a date/date shift."""
+
+    ask_for_desc: bool = True
+    """Prompt the user to input a description."""
+
+    overwrite_file: bool = False
+    """Overwrite files with the same name in the destination."""
+
+    dry_run: bool = False
+    """Just print the console messages without actually doing anything."""
+
+    debug: bool = True
+    """Print more console messages."""
+
+    subdir: Callable[[Info], str]
+    """User defined function for determining the name of the subdirectory under
+    :code:`dst_path` where the files will be placed."""
+
+    skip: Callable[[Info], bool]
+    """User defined function for determining if a file will be skipped."""
+
+    rename: Callable[[Info], str]
+    """ User defined function for determining how the destination file will be
+    named."""
+
+    post_process: Callable[[str], None]
+    """User defined function for doing post-processing on a destination
+    file."""
 
 
 class IncompatibleCfgVersion(Exception):
@@ -244,7 +479,7 @@ def send_to(cfg: Cfg) -> None:
 
         if skip:
             print(f'{file} is ignored')
-            continue
+            continue  # go to next file
 
         new_file_name = ""  # the name of the file + its extension
         try:
