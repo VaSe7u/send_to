@@ -527,8 +527,9 @@ def send_to(cfg: Cfg) -> None:
     print('\nDone! ', end='')
 
     if cfg.debug:
-        input("Press any key to exit...")
+        input("Press \"Enter\" to exit...")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    print(f'send_to v{__version__}\n')
     print_help()
