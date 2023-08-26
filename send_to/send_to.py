@@ -80,7 +80,7 @@ def semver_str_to_int(version: str, part: VersionPart) -> int:
 
 
 class IncompatibleCfgVersion(Exception):
-    """Script's and configuration's major versions don't match.
+    """Script's major version and configuration's version don't match.
     """
     pass
 
@@ -114,7 +114,7 @@ def determine_date(ask_for_date: bool, date_fmt: str) -> str:
 
     Args:
         ask_for_date (bool): True - prompt the user to manually input the
-        desired date, False - use today's date
+            desired date, False - use today's date
         date_fmt (str): string format of the date
 
     Returns:
@@ -150,7 +150,9 @@ def determine_date(ask_for_date: bool, date_fmt: str) -> str:
 
 def print_help():
     """Print help. Used when calling this module directly."""
-    help = """This module is meant to be imported in a configuration file."""
+
+    help = """This module is meant to be imported in a script. Refer to the
+    documentation."""
     print(help)
 
 
@@ -162,12 +164,13 @@ def send_to(cfg: Cfg) -> None:
 
     Raises:
         IncompatibleCfgVersion: Raised when the major version of the script
-        doesn't match the major version of the configuration object.
+            doesn't match the version of the configuration object.
     """
 
     print(f'send_to v{__version__}, cfg v{cfg.version}\n')
 
-    # compare the major versions of the script and the configuration object
+    # compare the major version of the script with the version configuration
+    # object
     script_maj_ver = semver_str_to_int(__version__, VersionPart.MAJOR)
     if script_maj_ver != cfg.version:
         raise IncompatibleCfgVersion
@@ -180,7 +183,7 @@ def send_to(cfg: Cfg) -> None:
     # arguments after the script's name
     files = sys.argv[1:]  # set files that will be copied/moved
 
-    # Prints a list of the files that will be processed.
+    # print a list of the files that will be processed
     print(f'Files to be {op_str_past}: ', end='')
     for file in files:
         print(f'{os.path.basename(file)} ', end='')
@@ -276,7 +279,7 @@ def send_to(cfg: Cfg) -> None:
             print()
 
         try:
-            # Pass the destination file's path to the user defined function
+            # Pass the destination file's path to the user's function
             # `post_process()` to allow the user to do post-processing on the
             # file.
             cfg.post_process(new_file)
