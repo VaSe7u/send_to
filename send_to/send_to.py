@@ -417,6 +417,8 @@ def send_to(cfg: Cfg) -> None:
     # when using Window's shell:sendto the selected files are passed as
     # arguments after the script's name
     files = sys.argv[1:]  # set files that will be copied/moved
+    if len(files) == 0:
+        sys.exit("Error: No files passed as arguments.")
 
     # print a list of the files that will be processed
     print(f'Files to be {op_str_past}: ', end='')
