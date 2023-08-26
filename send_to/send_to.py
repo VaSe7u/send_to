@@ -26,153 +26,32 @@ functions (optional). Call the `send_to(cfg)` procedure.
 
 __name__ = "send_to"
 __author__ = "Vasil Kalchev"
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __license__ = "MIT"
 
 
 import sys
 import os
+from dataclasses import dataclass
+from enum import Enum
+from typing import Callable
 from datetime import datetime, timedelta
 import shutil
-from enum import Enum
 
 
-def subdir_func(dst_path: str, date: str, desc: str) -> str:
-    """Empty function for determining the name for the optional sub-directory
-    where the files will be placed.
+@dataclass
+class Info:
+    file_path: str = ""
+    """The path of the currently processed file."""
 
-    Usage instructions:
-     - Create a function with the same signature in the your script.
-     - The function must return the desired name of the sub-directory where the
-    files will be placed. Parameters `dst_path`, `date` and `desc` can be used
-    to construct the name.
-     - Set Cfg.subdir to the name of your `subdir()` function.
+    dst_path: str = ""
+    """Destination path"""
 
-    Args:
-        dst_path (str): destination path
-        date (str): a date string
-        desc (str): a description string
+    date: str = ""
+    """Date"""
 
-    Returns:
-        str: sub-directory name
-    """
-    return ""
-
-
-def skip_func(file_path: str) -> bool:
-    """Empty function for determining wheter the passed source file will be
-    skipped.
-
-    Usage instructions:
-     - Create a function with the same signature in the your script.
-     - The function must return a boolean indicating wheter the passed file
-    will be skipped or not.
-     - Set Cfg.skip to the name of your `skip()` function.
-
-    Args:
-        file_path (str): path to the currently processed file
-
-    Returns:
-        bool: skip/no skip
-    """
-    return False
-
-
-def rename_func(file_path: str, dst_path: str, date: str, desc: str) -> str:
-    """Empty function for determining a new name for the passed file.
-
-    Usage instructions:
-     - Create a function with the same signature in the your script.
-     - The function must return the new name of the passed file. Parameters
-    `date` and `desc` can be used to construct the name.
-     - Set Cfg.rename to the name of your `rename()` function.
-
-    Args:
-        file_path (str): path to the currently processed file
-        dst_path (str): destination path
-        date (str): a date string
-        desc (str): a description string
-
-    Returns:
-        str: new file name
-    """
-    return ""
-
-
-def post_process_func(file_path: str) -> None:
-    """Empty function for executing post-processing on the passed file.
-
-    Usage instructions:
-     - Create a function with the same signature in the your script.
-     - The function can do any sort of post-processing on the passed file.
-     - Set Cfg.post_process to the name of your `post_process()` function.
-
-    Args:
-        file_path (str): path to the currently processed file
-    """
-    pass
-
-
-Operation = Enum("Operation", ['MOVE', 'COPY'])
-
-
-class Cfg:
-    """User's configuration.
-    """
-
-    def __init__(self,
-                 version: int = int(__version__.split('.')[0]),
-                 dst_path: str = "",
-                 operation: Operation = Operation.MOVE):
-        """Construct an object with default configuration values.
-
-        Args:
-            dst_path (str, optional): destination path. Defaults to "".
-            operation (Operation, optional): copy or move. Defaults to
-            Operation.MOVE.
-        """
-
-        self.version: int = version
-        """Set it to the major version of the script that the configuration is
-        developed for."""
-
-        self.dst_path: str = dst_path
-        """Destination path."""
-
-        self.operation: Operation = operation
-        """Operation the will be performed on the files - copy or move."""
-
-        self.date_fmt: str = "%Y-%m-%d"
-        """String format of the date."""
-
-        self.ask_for_date: bool = True
-        """Prompt the user to input a date/date shift."""
-
-        self.ask_for_desc: bool = True
-        """Prompt the user to input a description."""
-
-        self.overwrite_file: bool = False
-        """Overwrite files with the same name in the destination."""
-
-        self.dry_run: bool = False
-        """Just print the console messages without actually doing anything."""
-
-        self.debug: bool = True
-        """Print more console messages."""
-
-        self.subdir = subdir_func
-        """User defined function for determining the name of the optional
-        sub-directory where the files will be placed."""
-
-        self.skip = skip_func
-        """User defined function for determining if a file will be skipped."""
-
-        self.rename = rename_func
-        """ User defined function for determining a new name for a file."""
-
-        self.post_process = post_process_func
-        """User defined function for doing post-processing on a resultant
-        file."""
+    desc: str = ""
+    """Description"""
 
 
 VersionPart = Enum("VersionPart", ['MAJOR', 'MINOR', 'PATCH'])
@@ -307,50 +186,56 @@ def send_to(cfg: Cfg) -> None:
         print(f'{os.path.basename(file)} ', end='')
     print()
 
+    # This object stores the information collected by the user and the current
+    # file that is being processed. It'll be passed to the user defined
+    # functions.
+    info = Info()
+    info.dst_path = cfg.dst_path
+
     # Determine the date that will be used based on the passed configuration.
     # The date is collected and later passed to the `subdir()` and `rename()`
     # functions so it can be used in the sub-directory and/or the files names.
-    date = determine_date(cfg.ask_for_date, cfg.date_fmt)
+    info.date = determine_date(cfg.ask_for_date, cfg.date_fmt)
 
     # Optionally ask the user for a description of the files that will be
     # processed.
     # The description is also collected for the same purpose as the date.
     if cfg.ask_for_desc:
-        desc = input('Input description (can be left blank): ')
+        info.desc = input('Input description (can be left blank): ')
     else:
-        desc = ''
+        info.desc = ""
 
     subdir_name = ""
     try:
-        # Try calling the user defined function `subdir()` in order to
-        # determine the name of the folder where the files will be placed. If
-        # the function returns an empty string - no sub-directory will be
-        # created.
-        subdir_name = cfg.subdir(cfg.dst_path, date, desc)
+        # Call the user's function `subdir(info)` to determine the name of the
+        # subdirectory where the file be placed. When an empty string is
+        # returned - no subdirectory is created.
+        subdir_name = cfg.subdir(info)
     except AttributeError:  # no subdir function assigned
         pass
 
     if subdir_name != "":
         # If a sub-directory name was returned - try to create it.
-        dst_path = f"{cfg.dst_path}\\{subdir_name}"
+        info.dst_path = f"{cfg.dst_path}\\{subdir_name}"
 
         if cfg.dry_run is False:
             try:
-                os.mkdir(dst_path)
+                os.mkdir(info.dst_path)
                 if cfg.debug:
-                    print(f'DEBUG: created directory {dst_path}')
+                    print(f'DEBUG: created directory {info.dst_path}')
             except FileExistsError:
                 if cfg.debug:
                     print('DEBUG: directory already exists')
     else:
-        dst_path = cfg.dst_path
+        info.dst_path = cfg.dst_path
 
     for file in files:
         skip = False
         try:
-            # Pass the source file's path to the user defined function
-            # `skip()` to determine if this file will be skipped or not.
-            skip = cfg.skip(file)
+            # Call the user's function `skip(info)` to determine if the current
+            # file should be skipped.
+            info.file_path = file
+            skip = cfg.skip(info)
         except TypeError:  # no skip function assigned
             pass
 
@@ -360,10 +245,10 @@ def send_to(cfg: Cfg) -> None:
 
         new_file_name = ""  # the name of the file + its extension
         try:
-            # Pass the source file's path, the destination path, the collected
-            # date and description to the user defined function `rename()` to
-            # get the new name of this file.
-            new_file_name = cfg.rename(file, dst_path, date, desc)
+            # Call the user's function `rename(info)` to determine the new name
+            # of the currenly processed file. When an empty string is returned
+            # - the original file's name will be used.
+            new_file_name = cfg.rename(info)
         except TypeError:  # no renaming function assigned
             pass
 
@@ -372,7 +257,7 @@ def send_to(cfg: Cfg) -> None:
             new_file_name = os.path.basename(file)
 
         # prepend the directory's path to the full file name
-        new_file = dst_path + '\\' + new_file_name
+        new_file = info.dst_path + '\\' + new_file_name
 
         print(f'{op_str_cont} {file} to {new_file}', end='')
 
