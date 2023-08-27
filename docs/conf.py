@@ -10,7 +10,8 @@ import sys
 import os
 import send_to
 
-sys.path.insert(0, os.path.abspath("..\\send_to\\"))
+sys.path.insert(0, os.path.abspath(os.path.join('..', '..', 'send_to')))
+# sys.path.insert(0, os.path.abspath("..\\send_to\\"))
 
 
 project = 'send_to'
