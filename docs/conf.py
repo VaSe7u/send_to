@@ -13,8 +13,8 @@ import os
 # sys.path.insert(0, os.path.abspath(os.path.join('..', '..', 'send_to')))
 # sys.path.append(os.path.abspath('../..'))
 # sys.path.append(os.path.abspath(".."))
-sys.path.append(os.path.abspath(os.path.join('..', '..')))
-sys.path.append(os.path.abspath(os.path.join('..', '..', 'send_to')))
+sys.path.append(os.path.abspath(os.path.join('..', 'send_to')))
+# sys.path.append(os.path.abspath(os.path.join('..', '..', 'send_to')))
 
 import send_to
 
