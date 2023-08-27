@@ -8,10 +8,13 @@
 
 import sys
 import os
-import send_to
 
-sys.path.insert(0, os.path.abspath(os.path.join('..', '..', 'send_to')))
 # sys.path.insert(0, os.path.abspath("..\\send_to\\"))
+# sys.path.insert(0, os.path.abspath(os.path.join('..', '..', 'send_to')))
+# sys.path.append(os.path.abspath('../..'))
+sys.path.append(os.path.abspath(".."))
+
+import send_to
 
 
 project = 'send_to'
